@@ -9,10 +9,9 @@
 #include <chrono>
 #include <sys/resource.h>
 #include <ncurses.h>
-
+#include <locale.h>
 
 using namespace std;
-
 
 class edge
 {
@@ -38,7 +37,8 @@ public:
     vector<edge> way;
     unsigned long time=0;
     unsigned long cost=0;
-    track(vector <edge> a, unsigned long b=0, unsigned long c=0)//Конуструктор пути из вектора ребер
+
+    track(vector <edge> a, unsigned long b=0, unsigned long c=0)
     {
         way=a;
         if (b==0 && c==0)
@@ -49,28 +49,27 @@ public:
                 c+=it->cruise_fare;
             }
         }
-        else if (c==0)
-        {
-            cout<<"Случай не предусмотрен"<<endl;
-        }
         time=b;
         cost=c;
     }
-    track operator+(track other)//сложение путей
+
+    track operator+(track other)
     {
-        vector<edge> newway={};
-        newway.insert(newway.end(), way.begin(), way.end());
-        newway.insert(newway.end(), other.way.begin(), other.way.end());
-        return track(newway, time+other.time, cost+other.cost);
+        vector<edge> new_way={};
+        new_way.insert(new_way.end(), way.begin(), way.end());
+        new_way.insert(new_way.end(), other.way.begin(), other.way.end());
+        return track(new_way, time+other.time, cost+other.cost);
     }
-    track operator+(edge other) //reverse +
+
+    track operator+(edge other)
     {
-        vector<edge> newway;
-        newway.push_back(other);
-        newway.insert(newway.end(), way.begin(), way.end());
-        return track(newway, time+other.cruise_time, cost+other.cruise_fare);
+        vector<edge> new_way;
+        new_way.push_back(other);
+        new_way.insert(new_way.end(), way.begin(), way.end());
+        return track(new_way, time+other.cruise_time, cost+other.cruise_fare);
     }
-    edge operator[](unsigned long i)//Доступ к ребру в пути
+
+    edge operator[](unsigned long i)
     {
         return way.at(i);
     }
@@ -86,11 +85,11 @@ typedef map<unsigned long, edge> edgemap;
 edgemap algo1(gr_type &graph, unsigned long n_cities, numset &transport, unsigned long start)
 {
 	unsigned long MAX_UL = numeric_limits<unsigned long>::max();
-	vector<numpair> d(n_cities, {MAX_UL, MAX_UL});//d=[{время, стоимость}] Лучшие* в этот город
-	edgemap p;//p[куда]=ребро - Запоминание путей
-	d[start].first=0;//Время
-	d[start].second=0;//Стоимость
-	priority_queue<troika, vector<troika>, greater<troika>> q;//Куча {время, стоимость, номер вершины}
+	vector<numpair> d(n_cities, {MAX_UL, MAX_UL});
+	edgemap p;
+	d[start].first=0;
+	d[start].second=0;
+	priority_queue<troika, vector<troika>, greater<troika>> q;
 	q.push({0,0,start});
 	while(!q.empty())
 	{
@@ -132,11 +131,11 @@ edgemap algo1(gr_type &graph, unsigned long n_cities, numset &transport, unsigne
 edgemap algo2(gr_type &graph, unsigned long n_cities, numset &transport, unsigned long start)
 {
      unsigned long MAX_UL = numeric_limits<unsigned long>::max();
-     vector<numpair> d(n_cities, {MAX_UL, MAX_UL});//d=[{стоимость, время}] Лучшие* в этот город
-     edgemap p;//p[куда]=ребро - Запоминание путей
-     d[start].first=0;//Стоимость
-     d[start].second=0;//Время
-     priority_queue<troika, vector<troika>, greater<troika>> q;//Куча {стоимость, время, номер вершины}
+     vector<numpair> d(n_cities, {MAX_UL, MAX_UL});
+     edgemap p;
+     d[start].first=0;
+     d[start].second=0;
+     priority_queue<troika, vector<troika>, greater<troika>> q;
      q.push({0,0,start});
      while(!q.empty())
      {
@@ -181,7 +180,7 @@ edgemap algo3(gr_type &graph, unsigned long n_cities, numset &transport, unsigne
 	 queue<unsigned long> q;
 	 q.push(start);
      numvec d(n_cities, MAX_UL);
-     edgemap p;//p[куда]=ребро - Запоминание путей
+     edgemap p;
      d[start]=0;
      while(!q.empty())
      {
@@ -210,10 +209,10 @@ edgemap algo3(gr_type &graph, unsigned long n_cities, numset &transport, unsigne
 edgemap algo4(gr_type &graph, unsigned long n_cities, numset &transport, unsigned long start, unsigned long maxcost)
 {
      unsigned long MAX_UL = numeric_limits<unsigned long>::max();
-     numvec d(n_cities, MAX_UL);//d=[{мин стоимость до города}]
-     edgemap p;//p[куда]=ребро - Запоминание путей
+     numvec d(n_cities, MAX_UL);
+     edgemap p;
      d[start]=0;
-     priority_queue<numpair, vector<numpair>, greater<numpair>> q;//Куча {стоимость, номер вершины}
+     priority_queue<numpair, vector<numpair>, greater<numpair>> q;
      q.push({0,start});
      while(!q.empty())
      {
@@ -245,10 +244,10 @@ edgemap algo4(gr_type &graph, unsigned long n_cities, numset &transport, unsigne
 edgemap algo5(gr_type &graph, unsigned long n_cities, numset &transport, unsigned long start, unsigned long maxtime)
 {
      unsigned long MAX_UL = numeric_limits<unsigned long>::max();
-     numvec d(n_cities, MAX_UL);//d=[{время до города}]
-     edgemap p;//p[куда]=ребро - Запоминание путей
+     numvec d(n_cities, MAX_UL);
+     edgemap p;
      d[start]=0;
-     priority_queue<numpair, vector<numpair>, greater<numpair>> q;//Куча {время, номер вершины}
+     priority_queue<numpair, vector<numpair>, greater<numpair>> q;
      q.push({0,start});
      while(!q.empty())
      {
@@ -285,38 +284,40 @@ float get_rss() {
 
 void print_track(track &tr, map<unsigned long, string> &ind2tr, map<unsigned long, string> &ind2city)
 {
-    cout<<endl;
 	if (tr.way.size()==0)
         {
-            cout<<"Такого пути не существует"<<endl;
-            cout<<"================================================="<<endl;
-            cout<<endl;
+            addstr("Нет пути\n");
+            addstr("=================================================\n");
+            addstr("\n");
             return;
         }
     for (vector<edge>::iterator it = tr.way.begin();it!=tr.way.end();it++)
     {
-        cout<<ind2tr[it->transport_type];
-        cout<<" из ";
-        cout<<ind2city[it->from];
-        cout<<" в ";
-        cout<<ind2city[it->to];
-        cout<<" Время "<<it->cruise_time<<" мин; Стоимость "<<it->cruise_fare<<" руб"<<endl;
+        addstr(ind2tr[it->transport_type].c_str());
+        addstr(" из ");
+        addstr(ind2city[it->from].c_str());
+        addstr(" в ");
+        addstr(ind2city[it->to].c_str());
+        addstr(" Время: ");
+		addstr(to_string(it->cruise_time).c_str());
+		addstr(" мин; Стоимость: ");
+		addstr(to_string(it->cruise_fare).c_str());
+		addstr(" руб\n");
     }
-    cout<<"Общее время в пути "<<tr.time<<" мин"<<endl;
-    cout<<"Общая стоимость поездки "<<tr.cost<<" руб"<<endl;
-    cout<<"================================================="<<endl;
-    cout<<endl;
+    addstr("Общее время в пути: ");
+	addstr(to_string(tr.time).c_str());
+	addstr(" мин\n");
+    addstr("Общая стоимость поездки: ");
+	addstr(to_string(tr.cost).c_str());
+	addstr(" руб\n");
 }
 
 int main(int argc, char** argv)
 {
 	ofstream log;
 	log.open("log.txt", ios::out | ios::trunc);
-	log<<"start prog max rss = "<<get_rss()<<" KB"<<endl;
+	log<<"start -> max rss = "<<get_rss()<<" KB"<<endl;
     const char* input_file=argv[1];
-    setlocale(0, "");
-    //SetConsoleOutputCP(65001);
-
     ifstream input(input_file);
 
     map<string, unsigned long> city2ind;
@@ -328,6 +329,9 @@ int main(int argc, char** argv)
     unsigned long count_id2=0;
 
     gr_type graph;
+    unsigned long id_from=0;
+    unsigned long id_to=0;
+    unsigned long id_tr=0;
     for( string line; getline( input, line ); )
     {
         if (!line.length() || line[0]=='#') continue;
@@ -354,7 +358,6 @@ int main(int argc, char** argv)
         transport_type=line.substr(n1, n2-n1);
         n1=n2+deli.size()+1;
         n2=line.find(deli, n1);
-        //Переход к делению по пробелу
         string line2=line.substr(n1, n2-n1);
         deli=" ";
         n1=0;
@@ -363,10 +366,6 @@ int main(int argc, char** argv)
         n1=n2+deli.size();
         n2=line2.find(deli, n1);
         cf=line2.substr(n1, n2-n1);
-        //Заполнение идентификаторов
-        unsigned long id_from=0;
-        unsigned long id_to=0;
-        unsigned long id_tr=0;
         if (city2ind.count(from_city)>0) id_from=city2ind[from_city];
         else
         {
@@ -391,151 +390,249 @@ int main(int argc, char** argv)
             ind2tr[count_id2]=transport_type;
             count_id2++;
         }
-        //Заполнение графа
         unsigned long cruise_time = strtoul(ct.c_str(), nullptr, 10);
         unsigned long cruise_fare = strtoul(cf.c_str(), nullptr, 10);
         edge ed=edge(id_from, id_to, id_tr, cruise_time, cruise_fare);
         graph[id_from][id_to].push_back(ed);
     }
-	log<<"after graph uploading max rss = "<<get_rss()<<" KB"<<endl;
-    while(1)//Основной цикл программы
+
+	log<<"graph uploaded -> max rss = "<<get_rss()<<" KB"<<endl;
+	setlocale(LC_ALL, "");
+	initscr();
+	scrollok(stdscr, 1);
+    start_color();
+	init_pair(1, COLOR_BLACK, COLOR_RED);
+	init_pair(2, COLOR_RED, COLOR_BLACK);
+	init_pair(3, COLOR_GREEN, COLOR_WHITE);
+    
+    while(1)
     {
-        cout<<endl;
-        cout<<"Главное меню\nВыберите режим работы"<<endl;
-        cout<<"1 - Найти кратчайший по времени путь"<<endl;
-        cout<<"2 - Найти путь минимальной стоимости"<<endl;
-        cout<<"3 - Найти путь с наименьшим числом пересадок"<<endl;
-        cout<<"4 - Найти города, достижимые за заданное количество денег"<<endl;
-        cout<<"5 - Найти города, достижимые за заданное время"<<endl;
-        cout<<"0 - EXIT"<<endl;
-        cout<<">> ";
-        int mode;
-        cin>>mode;
-        cout<<endl;
-        if (mode==0) exit(0);
-        set<unsigned long> en_transp={}; //Разрешенный транспорт
-        cout<<"1 - Ввести виды транспорта на которых разрешено ехать"<<endl;
-        cout<<"2 - Ввести виды транспорта на которых запрещено ехать"<<endl;
-        cout<<"3 - Нет ограничений на виды транспорта"<<endl;
-        cout<<">> ";
-        string tp;
-		cin.clear();
-        while(1)
-        {
-			cin.clear();
-            cin>>tp;
-			cout<<tp<<endl;
-            cout<<endl;
-            if (tp=="1")//Ввод разрешенных видов транспорта
+		noecho();
+		int mode = 0;
+		bool chosen = false;
+		const char *choices[6] = {"Найти самый быстрый из самых дешевых путей",
+                                    "Найти самый дешевый из самых быстрых путей",
+                                    "Найти кратчайший путь из города в город",
+                                    "Найти города, достижимые не более чем за ограниченное количество денег",
+                                    "Найти города, достижимые не более чем за ограниченное время",
+                                    "Выход"};
+        while(!chosen)
+		{
+			clear();
+			curs_set(0);
+			keypad(stdscr, true);
+			addstr("Выберите режим работы программы:\n\n");
+			refresh();
+			for (int i = 0; i < 6; i++)
             {
-                cout<<"Введите названия разрешенных видов транспорта со строчной буквы через Enter"<<endl;
-                cout<<"По окончании введите 0"<<endl;
-                string trtype;
-                cin.ignore();
-                getline(cin, trtype);
-                while (1)
+				if ((i == 5) && (i != mode))
+				{
+					attron(COLOR_PAIR(2));
+                    printw("%s\n", choices[i]);
+                    attroff(COLOR_PAIR(2));
+				}
+				else if ((i == 5) && (i == mode))
+				{
+					attron(COLOR_PAIR(1));
+                    printw("%s\n", choices[i]);
+                    attroff(COLOR_PAIR(1));
+				}
+                else if (i == mode)
                 {
-                    if (trtype=="0") break;
-                    if (tr2ind.count(trtype)>0)
-                    {
-                        en_transp.insert(tr2ind[trtype]);
-                    }
-                    else
-                    {
-                        cout<<"Не найден данный вид транспорта. Продолжайте ввод"<<endl;
-                    }
-                    getline(cin, trtype);
+                    attron(A_STANDOUT);
+                    printw("%s\n", choices[i]);
+                    attroff(A_STANDOUT);
                 }
-                break;
-            }
-            else if (tp=="2")//Ввод запрещенных видов транспорта
-            {
-                set<unsigned long> zapr;
-                cout<<"Введите названия запрещенных видов транспорта со строчной буквы через Enter"<<endl;
-                cout<<"По окончании введите 0"<<endl;
-                string trtype;
-                cin.ignore();
-                getline(cin, trtype);
-                while (1)
+                else
                 {
-                    if (trtype=="0") break;
-                    if (tr2ind.count(trtype)>0)
-                    {
-                        zapr.insert(tr2ind[trtype]);
-                    }
-                    else
-                    {
-                        cout<<"Не найден данный вид транспорта. Продолжайте ввод"<<endl;
-                    }
-                    getline(cin, trtype);
+                    printw("%s\n", choices[i]);
                 }
-                for(map<unsigned long, string>::iterator it = ind2tr.begin(); it != ind2tr.end(); ++it) {
-                    if (zapr.find(it->first) == zapr.end()) en_transp.insert(it->first);
-                }
-                break;
+                refresh();
             }
-            else if (tp=="3")//Все разрешены
+			switch (getch())
             {
-                cout<<"Разрешены все известные виды транспорта"<<endl;
-                cout<<endl;
-                cin.ignore();
-                for(map<unsigned long, string>::iterator it = ind2tr.begin(); it != ind2tr.end(); ++it) {
-                    en_transp.insert(it->first);
+                case KEY_UP:
+                {
+                    if (mode > 0) mode--;
+                    break;
                 }
-                break;
-            }
-            else
-            {
-                cout<<"Вы Ошиблись. Введите цифру заново"<<endl;
-				cout<<">> ";
+
+                case KEY_DOWN:
+                {
+                    if (mode < 5) mode++;
+					break;
+                }
+                    
+                case (int)'\n':
+                {
+                    chosen = true;
+                    break;
+                }
+
+                default: break;
             }
         }
+        keypad(stdscr, false);
+        if (mode==5) break;
+        set<unsigned long> en_transp={};
+		int tp=0;
+		chosen = false;
+		const char *choices_tr[4] = {"Ввести разрешенные виды транспорта",
+                                    "Ввести запрещенные виды транспорта",
+                                    "Без ограничений",
+									"Назад в меню"};
+		while(!chosen)
+		{
+			clear();
+			curs_set(0);
+			keypad(stdscr, true);
+			addstr("Выберите ограничения на транспорт\n\n");
+			refresh();
+			for (int i = 0; i < 4; i++)
+            {
+                if (i == tp)
+                {
+                    attron(A_STANDOUT);
+                    printw("%s\n", choices_tr[i]);
+                    attroff(A_STANDOUT);
+                }
+                else
+                {
+                    printw("%s\n", choices_tr[i]);
+                }
+                refresh();
+            }
+			switch (getch())
+            {
+                case KEY_UP:
+                {
+                    if (tp > 0) tp--;
+                    break;
+                }
+
+                case KEY_DOWN:
+                {
+                    if (tp < 3) tp++;
+					break;
+                }
+                    
+                case (int)'\n':
+                {
+                    chosen = true;
+                    break;
+                }
+
+                default: break;
+            }
+        }
+        keypad(stdscr, false);
+		if (tp==3) continue;
+		if (tp==0)
+		{
+			char trtypec[20];
+			clear();
+			curs_set(1);
+			keypad(stdscr, true);
+			addstr("Введите разрешенные виды транспорта (со строчной буквы, через Enter)\n");
+			addstr("По окончании ввода дважды нажмите Enter\n");
+			echo();
+			getstr(trtypec);
+			string trtype = trtypec;
+			while (1)
+			{
+				if (trtype=="") break;
+				if (tr2ind.count(trtype)>0)
+				{
+					en_transp.insert(tr2ind[trtype]);
+				}
+				else
+				{
+					addstr("Транспорт не найден. Попробуйте ввести заново\n");
+				}
+				getstr(trtypec);
+				trtype = trtypec;
+			}
+		}
+		else if (tp==1)
+		{
+			char trtypec[20];
+			clear();
+			curs_set(1);
+			keypad(stdscr, true);
+			set<unsigned long> zapr;
+			addstr("Введите запрещенные виды транспорта (со строчной буквы, через Enter)\n");
+			addstr("По окончании ввода дважды нажмите Enter\n");
+			echo();
+			getstr(trtypec);
+			string trtype = trtypec;
+			while (1)
+			{
+				if (trtype=="") break;
+				if (tr2ind.count(trtype)>0)
+				{
+					zapr.insert(tr2ind[trtype]);
+				}
+				else
+				{
+					addstr("Транспорт не найден. Попробуйте ввести заново\n");
+				}
+				getstr(trtypec);
+				trtype = trtypec;
+			}
+			for(map<unsigned long, string>::iterator it = ind2tr.begin(); it != ind2tr.end(); ++it) {
+				if (zapr.find(it->first) == zapr.end()) en_transp.insert(it->first);
+			}
+		}
+		else if (tp==2)
+		{
+			for(map<unsigned long, string>::iterator it = ind2tr.begin(); it != ind2tr.end(); ++it) {
+				en_transp.insert(it->first);
+			}
+		}
+		else break;
         string from;
         string to;
+		char fromc[50];
+		char toc[50];
         unsigned long from_id=0;
         unsigned long to_id=0;
-        cout<<"Введите город отправления: "<<endl;
+		clear();
+		keypad(stdscr, true);
+		echo();
+        addstr("Введите город отправления\n");
         while(1)
         {
-            getline(cin, from);
-            if (from=="0") exit(0);
-            short flag=0;
+            getstr(fromc);
+			from = fromc;
+            bool flag=false;
             if (city2ind.find(from) !=  city2ind.end())
 			{
 				from_id=city2ind[from];
-				flag=1;
+				flag=true;
 			}
-            if (flag==1) break;
-            cout<<"Такого города не найдено в базе данных. ";
-			cout<<"Введите другой город или введите 0 чтобы выйти из программы"<<endl;
+            if (flag) break;
+            addstr("Город не найден в базе данных. ");
+			addstr("Попробуйте ввести другой город\n");
         }
-        if (mode==1) // 1 РЕЖИМ
+        if (mode==0) // 1 РЕЖИМ
         {
-            cout<<"Введите город прибытия: "<<endl;
+			addstr("Введите город прибытия\n");
             while(1)
             {
-                getline(cin, to);
-                if (to=="0") exit(0);
-                short flag=0;
+                getstr(toc);
+				to = toc;
+                bool flag=false;
 				if (city2ind.find(to) !=  city2ind.end())
 				{
 					to_id=city2ind[to];
-					flag=1;
+					flag=true;
 				}
-                if ((to_id == from_id) && (flag==1))
-                {
-                    cout<<"Город прибытия совпадает с городом отправления. ";
-					cout<<"Введите другой город или 0 чтобы выйти из программы"<<endl;
-                    continue;
-                }
-                if (flag==1) break;
-                cout<<"Такого города не найдено в базе данных. ";
-				cout<<"Введите другой город или введите 0 чтобы выйти из программы"<<endl;
+                if (flag==true) break;
+                addstr("Город не найден в базе данных. ");
+				addstr("Попробуйте ввести другой город\n");
             }
 			auto begin_time = chrono::high_resolution_clock::now();
-            //Алгоритм Дейкстры 1 режима
             edgemap res = algo1(graph, count_id1, en_transp, from_id);
-            //Проход по пути с его выводом
             track cruise=track({});
             unsigned long curver=to_id;
             while (curver!=from_id)
@@ -546,40 +643,32 @@ int main(int argc, char** argv)
             }
 			auto end_time = chrono::high_resolution_clock::now();
 			auto elapsed_mcs = chrono::duration_cast<chrono::microseconds>(end_time - begin_time);
+			addstr("\n");
             print_track(cruise, ind2tr, ind2city);
 			log<<"calling algorithm 1"<<endl;
 			log<<"algo time elapsed "<<elapsed_mcs.count()<<" mcs"<<endl;
 			log<<"max rss = "<<get_rss()<<" KB"<<endl;
 			log<<"========================"<<endl;
-			cout<<endl;
         }
-        else if (mode==2)//2 РЕЖИМ
+        else if (mode==1)//2 РЕЖИМ
         {
-            cout<<"Введите город прибытия: "<<endl;
+			addstr("Введите город прибытия\n");
             while(1)
             {
-                getline(cin, to);
-                if (to=="0") exit(0);
-                short flag=0;
+                getstr(toc);
+				to = toc;
+                bool flag=false;
                 if (city2ind.find(to) !=  city2ind.end())
 				{
 					to_id=city2ind[to];
-					flag=1;
+					flag=true;
 				}
-                if ((to_id == from_id) && (flag==1))
-                {
-                    cout<<"Город прибытия совпадает с городом отправления. ";
-					cout<<"Введите другой город или введите 0 чтобы выйти"<<endl;
-                    continue;
-                }
-                if (flag==1) break;
-                cout<<"Такого города не найдено в базе данных. ";
-				cout<<"Введите другой город или введите 0 чтобы выйти из программы"<<endl;
+                if (flag==true) break;
+                addstr("Город не найден в базе данных. ");
+				addstr("Попробуйте ввести другой город\n");
             }
 			auto begin_time = chrono::high_resolution_clock::now();
-            //Алгоритм Дейкстры 2 режима
             edgemap res = algo2(graph, count_id1, en_transp, from_id);
-            //Проход по пути с его выводом
             track cruise=track({});
             unsigned long curver=to_id;
             while (curver!=from_id)
@@ -590,40 +679,32 @@ int main(int argc, char** argv)
             }
 			auto end_time = chrono::high_resolution_clock::now();
 			auto elapsed_mcs = chrono::duration_cast<chrono::microseconds>(end_time - begin_time);
+			addstr("\n");
             print_track(cruise, ind2tr, ind2city);
 			log<<"calling algorithm 2"<<endl;
 			log<<"algo time elapsed "<<elapsed_mcs.count()<<" mcs"<<endl;
 			log<<"max rss = "<<get_rss()<<" KB"<<endl;
 			log<<"========================"<<endl;
-			cout<<endl;
         }
-        else if (mode==3)
+        else if (mode==2) //3 РЕЖИМ
         {
-            cout<<"Введите город прибытия: "<<endl;
+			addstr("Введите город прибытия\n");
             while(1)
             {
-                getline(cin, to);
-                if (to=="0") exit(0);
-                short flag=0;
+                getstr(toc);
+				to = toc;
+                bool flag=false;
                 if (city2ind.find(to) !=  city2ind.end())
 				{
 					to_id=city2ind[to];
-					flag=1;
+					flag=true;
 				}
-                if ((to_id == from_id) && (flag==1))
-                {
-                    cout<<"Город прибытия совпадает с городом отправления. ";
-					cout<<"Введите другой город или 0 чтобы выйти"<<endl;
-                    continue;
-                }
-                if (flag==1) break;
-                cout<<"Такого города не найдено в базе данных. ";
-				cout<<"Введите другой город или 0 чтобы выйти"<<endl;
+                if (flag==true) break;
+                addstr("Город не найден в базе данных. ");
+				addstr("Попробуйте ввести другой город\n");
             }
 			auto begin_time = chrono::high_resolution_clock::now();
-            //Алгоритм Дейкстры 3 режима
             edgemap res = algo3(graph, count_id1, en_transp, from_id);
-            //Проход по пути с его выводом
             track cruise=track({});
             unsigned long curver=to_id;
             while (curver!=from_id)
@@ -634,27 +715,26 @@ int main(int argc, char** argv)
             }
 			auto end_time = chrono::high_resolution_clock::now();
 			auto elapsed_mcs = chrono::duration_cast<chrono::microseconds>(end_time - begin_time);
+			addstr("\n");
             print_track(cruise, ind2tr, ind2city);
 			log<<"calling algorithm 3"<<endl;
 			log<<"algo time elapsed "<<elapsed_mcs.count()<<" mcs"<<endl;
 			log<<"max rss = "<<get_rss()<<" KB"<<endl;
 			log<<"========================"<<endl;
-			cout<<endl;
         }
-        else if (mode==4)
+        else if (mode==3) //4 РЕЖИМ
         {
-			short ifcity=0;
-            string maxcost_str;
-            cout<<"Введите максимальную стоимость поездки руб: ";
-            cin>>maxcost_str;
-            unsigned long maxcost = strtoul(maxcost_str.c_str(), nullptr, 10);
+			bool ifcity=false;
+            char maxcost_str[10];
+            addstr("Введите стоимость поездки, руб ");
+            getstr(maxcost_str);
+			addstr("\n");
+            unsigned long maxcost = strtoul(maxcost_str, nullptr, 10);
 			auto begin_time = chrono::high_resolution_clock::now();
 			auto end_time = chrono::high_resolution_clock::now();
 			auto elapsed_mcs = chrono::duration_cast<chrono::microseconds>(end_time - begin_time);
 			begin_time = chrono::high_resolution_clock::now();
-            //Алгоритм поиска в ширину 4 режима
             edgemap res = algo4(graph, count_id1, en_transp, from_id, maxcost);
-            cout<<endl;
             unsigned long i = 0;
             while(i<count_id1)
             {
@@ -663,8 +743,7 @@ int main(int argc, char** argv)
                     i++;
                     continue;
                 }
-                cout<<ind2city[i]<<endl;
-				ifcity=1;
+				ifcity=true;
                 track cruise=track({});
                 unsigned long curver=i;
                 while (curver!=from_id)
@@ -675,42 +754,41 @@ int main(int argc, char** argv)
                 }
 				end_time = chrono::high_resolution_clock::now();
 				elapsed_mcs += chrono::duration_cast<chrono::microseconds>(end_time - begin_time);
+				attron(COLOR_PAIR(3));
+				addstr(ind2city[i].c_str());
+				attroff(COLOR_PAIR(3));
+				addstr("\n");
                 print_track(cruise, ind2tr, ind2city);
-                cout<<"Чтобы вывести новый город введите 1, чтобы завершить алгоритм, введите 0"<<endl;
-                cout<<">> ";
-                string w;
-                cin>>w;
-				cout<<endl;
+                addstr("Чтобы продолжить, нажмите Enter\n");
+                char w[1];
+                getstr(w);
 				begin_time = chrono::high_resolution_clock::now();
                 if (w=="0") break;
                 i++;
             }
 			end_time = chrono::high_resolution_clock::now();
 			elapsed_mcs += chrono::duration_cast<chrono::microseconds>(end_time - begin_time);
-            if (ifcity==0) cout<<"Таких городов нет"<<endl;
-            else cout<<"===============Конец=============="<<endl;
-			cout<<endl;
+            if (ifcity==false) addstr("Таких городов нет\n\n");
+            else addstr("===============Конец==============\n\n");
 			log<<"calling algorithm 4"<<endl;
 			log<<"algo time elapsed "<<elapsed_mcs.count()<<" mcs"<<endl;
 			log<<"max rss = "<<get_rss()<<" KB"<<endl;
 			log<<"========================"<<endl;
-			cout<<endl;
 
         }
-        else
+        else //5 РЕЖИМ
         {
-			short ifcity=0;
-            string maxtime_str;
-            cout<<"Введите максимальное время поездки мин: ";
-            cin>>maxtime_str;
-            unsigned long maxtime=strtoul(maxtime_str.c_str(), nullptr, 10);
+			bool ifcity=0;
+            char maxtime_str[10];
+            addstr("Введите время поездки, мин\n");
+            getstr(maxtime_str);
+			addstr("\n");
+            unsigned long maxtime=strtoul(maxtime_str, nullptr, 10);
 			auto begin_time = chrono::high_resolution_clock::now();
 			auto end_time = chrono::high_resolution_clock::now();
 			auto elapsed_mcs = chrono::duration_cast<chrono::microseconds>(end_time - begin_time);
 			begin_time = chrono::high_resolution_clock::now();
-            //Алгоритм поиска в ширину 5 режима
             edgemap res = algo5(graph, count_id1, en_transp, from_id, maxtime);
-            cout<<endl;
             unsigned long i = 0;
             while(i<count_id1)
             {
@@ -721,8 +799,10 @@ int main(int argc, char** argv)
                 }
 				end_time = chrono::high_resolution_clock::now();
 				elapsed_mcs += chrono::duration_cast<chrono::microseconds>(end_time - begin_time);
-                cout<<ind2city[i]<<endl;
-				ifcity=1;
+				attron(COLOR_PAIR(3));
+                addstr(ind2city[i].c_str());
+				attroff(COLOR_PAIR(3));
+				ifcity=true;
                 track cruise=track({});
                 unsigned long curver=i;
                 while (curver!=from_id)
@@ -731,31 +811,27 @@ int main(int argc, char** argv)
                     cruise=cruise+res[curver];
                     curver=res[curver].from;
                 }
+				addstr("\n");
                 print_track(cruise, ind2tr, ind2city);
-                cout<<"Чтобы вывести новый город введите 1, чтобы завершить алгоритм, введите 0"<<endl;
-                cout<<">> ";
-                string w;
-                cin>>w;
-				cout<<endl;
+                addstr("Чтобы продолжить, нажмите Enter\n");
+                char w[1];
+                getstr(w);
 				begin_time = chrono::high_resolution_clock::now();
                 if (w=="0") break;
                 i++;
             }
-			if (ifcity==0) cout<<"Таких городов нет"<<endl;
-            else cout<<"===============Конец=============="<<endl;
-			cout<<endl;
+			if (ifcity==false) addstr("Таких городов нет\n\n");
+            else addstr("===============Конец==============\n\n");
 			log<<"calling algorithm 5"<<endl;
 			log<<"algo time elapsed "<<elapsed_mcs.count()<<" mcs"<<endl;
 			log<<"max rss = "<<get_rss()<<" KB"<<endl;
 			log<<"========================"<<endl;
-			cout<<endl;
         }
-
-        cout<<"Для продолжения введите 1, для выхода 0"<<endl;
-        short num;
-        cin>>num;
-        cout<<endl;
-        if (num==0) exit(0);
+		addstr("\n");
+        addstr("Для продолжения нажмите любую клавишу\n");
+        getch();
     }
+	endwin();
+	log.close();
     return 0;
 }

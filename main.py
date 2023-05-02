@@ -218,36 +218,3 @@ elif mode=="3":
         print("Целевой город недостижим при заданных параметрах")
     else:
         print("Путь:", " -> ".join(result))
-
-
-# result_3 = bfs("Москва", "Новгород", ["поезд", "автобус", "самолёт"])
-# if result_3 is None:
-#     print("Целевой город недостижим при заданных параметрах")
-# else:
-#     print("Путь:", " -> ".join(result_3))
-
-# result_1 = dijkstra_shortest_time("Севастополь", "Бологое", ["самолёт", "автобус", "поезд"])
-# if result_1 is None:
-#     print("Целевой город недостижим при заданных параметрах")
-# else:
-#     path, time = result_1
-#     print("Путь:", " -> ".join(path))
-#     print("Время: ", time)
-
-# result_2 = dijkstra_lowest_cost("Москва", "Новгород", ["поезд", "автобус", "самолёт"])
-# if result_2 is None:
-#     print("Целевой город недостижим при заданных параметрах")
-# else:
-#     path, cost = result_2
-#     print("Путь:", " -> ".join(path))
-#     print("Стоимость: ", cost)
-
-# result_4 = dijkstra_limited_cost("Севастополь", ["поезд", "автобус", "самолёт"], 4100)
-# if result_4 is None:
-#     print("Целевой город недостижим при заданных параметрах")
-# else:
-#     for city in result_4:
-#         print(f"Город: {city}")
-#         print(f"Цена: {result_4[city]['cost']}")
-#         print(f"Путь: {' -> '.join(result_4[city]['path'])}")
-#         print()

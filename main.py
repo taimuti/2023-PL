@@ -218,7 +218,7 @@ if mode=="1":
     city_from = input()
     print("Введите город прибытия: ")
     city_to = input()
-    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите ""все"":")
+    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите 'все':")
     input_transport = input().split()
     if input_transport == ["все"]:
         allowed_transport = transport
@@ -237,7 +237,7 @@ elif mode=="2":
     city_from = input()
     print("Введите город прибытия: ")
     city_to = input()
-    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите ""все"":")
+    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите 'все':")
     input_transport = input().split()
     if input_transport == ["все"]:
         allowed_transport = transport
@@ -256,7 +256,7 @@ elif mode=="3":
     city_from = input()
     print("Введите город прибытия: ")
     city_to = input()
-    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите ""все"":")
+    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите 'все':")
     input_transport = input().split()
     if input_transport == ["все"]:
         allowed_transport = transport
@@ -273,7 +273,7 @@ elif mode=="4":
     city_from = input()
     print("Введите ограничение по стоимости: ")
     cost_limit = input()
-    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите ""все"":")
+    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите 'все':")
     input_transport = input().split()
     if input_transport == ["все"]:
         allowed_transport = transport
@@ -286,7 +286,7 @@ elif mode=="5":
     city_from = input()
     print("Введите ограничение по времени: ")
     time_limit = input()
-    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите ""все"":")
+    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите 'все':")
     input_transport = input().split()
     if input_transport == ["все"]:
         allowed_transport = transport

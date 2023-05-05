@@ -4,10 +4,11 @@ import heapq
 
 # Словарь для хранения списка ребер графа
 graph = {}
-# Словарь для хранения видов транспорта
+# Список для хранения видов транспорта
 transport = []
-# Словарь для хранения всех городов
-cities = []
+# Словарь для хранения всех городов и их индексов
+city2ind = {}
+ind2city = {}
 
 # Функция для добавления ребер в граф
 def add_edge(from_city, to_city, transport_type, cruise_time, cruise_fare):
@@ -18,19 +19,33 @@ def add_edge(from_city, to_city, transport_type, cruise_time, cruise_fare):
         graph[to_city] = {}
     # Добавляем ребро от города отправления к городу прибытия
     graph[from_city][to_city] = (transport_type, cruise_time, cruise_fare)
-    
+
 # Чтение графа из файла
 def read_graph(filename):
     with open(filename, 'r') as f:
+        count_id = 0
         for line in f:
             # Игнорируем комментарии и пустые строки
             if line.startswith('#') or not line.strip():
                 continue
-            from_city, to_city, transport_type, cruise_time, cruise_fare = line.strip().split()
-            add_edge(from_city.strip('"'), to_city.strip('"'), transport_type.strip('"'), int (cruise_time), int(cruise_fare))
-            if transport_type.strip('"') not in transport: transport.append(transport_type.strip('"'))
-            if from_city.strip('"') not in cities: cities.append(from_city.strip('"'))
-            if to_city.strip('"') not in cities: cities.append(to_city.strip('"'))
+            from_city_not, to_city_not, transport_type_not, cruise_time, cruise_fare = line.strip().split()
+            transport_type = transport_type_not.strip('"')
+            from_city = from_city_not.strip('"')
+            to_city = to_city_not.strip('"')
+            
+            if (from_city in city2ind): continue
+            else:  
+                city2ind[from_city] = count_id
+                ind2city[count_id] = from_city
+                count_id += 1
+            if (to_city in city2ind): continue
+            else:
+                city2ind[to_city] = count_id
+                ind2city[count_id] = to_city
+                count_id += 1
+
+            add_edge(from_city, to_city, transport_type, int (cruise_time), int(cruise_fare))
+            if transport_type not in transport: transport.append(transport_type)
 
 def dijkstra_shortest_time(from_city, to_city, allowed_transport_types):
     # Создаем словарь для хранения кратчайшего времени проезда от начального города до остальных городов
@@ -120,8 +135,9 @@ def bfs(from_city, to_city, allowed_transport_types):
     return None
 
 def dijkstra_limited_cost(from_city, allowed_transport_types, limit_cost):
+    from_city = city2ind[from_city]
     # Словарь для хранения кратчайших расстояний до каждого города
-    distances = {city: float('inf') for city in cities}
+    distances = {city: float('inf') for city in ind2city}
     distances[from_city] = 0
     # Запоминание путей
     path ={}
@@ -137,10 +153,10 @@ def dijkstra_limited_cost(from_city, allowed_transport_types, limit_cost):
         if curr_cost > limit_cost: 
             break
         # Обходим всех соседей текущего города
-        for neighbor, (transport_type, cruise_time, cruise_fare) in graph[curr_city].items():
+        for neighbour, (transport_type, cruise_time, cruise_fare) in graph[ind2city[curr_city]].items():
+            neighbor = city2ind[neighbour]
             # Если тип транспорта не входит в список разрешенных, то пропускаем город
-            if transport_type not in allowed_transport_types: 
-                continue
+            if transport_type not in allowed_transport_types: continue
             # Вычисляем новую стоимость до соседа через текущий город
             new_cost = distances[curr_city] + cruise_fare
             if ((distances[neighbor] > new_cost) and (new_cost <= limit_cost)):
@@ -149,11 +165,12 @@ def dijkstra_limited_cost(from_city, allowed_transport_types, limit_cost):
                 heapq.heappush(queue,[distances[neighbor], neighbor])
     # Выводим кратчайшие пути до всех городов, до которых можно добраться за ограниченную стоимость
     for (to_city, [from_city, to_city, transport_type, cruise_fare]) in path.items():
-        print(f'{to_city} : {from_city} -> {to_city}, {transport_type}, {cruise_fare}')
+        print(f'{ind2city[to_city]} : {ind2city[from_city]} -> {ind2city[to_city]}, {transport_type}, {cruise_fare}')
 
 def dijkstra_limited_time(from_city, allowed_transport_types, limit_time):
+    from_city = city2ind[from_city]
     # Словарь для хранения минимального времени до каждого города
-    distances = {city: float('inf') for city in cities}
+    distances = {city: float('inf') for city in ind2city}
     distances[from_city] = 0
     # Запоминание путей
     path ={}
@@ -169,25 +186,26 @@ def dijkstra_limited_time(from_city, allowed_transport_types, limit_time):
         if curr_time > limit_time: 
             break
         # Обходим всех соседей текущего города
-        for neighbor, (transport_type, cruise_time, cruise_fare) in graph[curr_city].items():
+        for neighbour, (transport_type, cruise_time, cruise_fare) in graph[ind2city[curr_city]].items():
+            neighbor = city2ind[neighbour]
             # Если тип транспорта не входит в список разрешенных, то пропускаем город
-            if transport_type not in allowed_transport_types: 
-                continue
+            if transport_type not in allowed_transport_types: continue
             # Вычисляем новую стоимость до соседа через текущий город
             new_time = distances[curr_city] + cruise_time
             if ((distances[neighbor] > new_time) and (new_time <= limit_time)):
                 distances[neighbor] = new_time
                 path[neighbor] = [curr_city, neighbor, transport_type, cruise_time]
-                heapq.heappush(queue,[distances[neighbor], neighbor])
+                heapq.heappush(queue,(distances[neighbor], neighbor))
     # Выводим кратчайшие пути до всех городов, до которых можно добраться за ограниченную стоимость
     for (to_city, [from_city, to_city, transport_type, cruise_time]) in path.items():
-        print(f'{to_city} : {from_city} -> {to_city}, {transport_type}, {cruise_time}')
+        print(f'{ind2city[to_city]} : {ind2city[from_city]} -> {ind2city[to_city]}, {transport_type}, {cruise_time}')
 
 # Читаем граф из файла
 filename = os.getcwd() + '/' + sys.argv[1]
 read_graph(filename)
 
 print("Режимы работы программы:\n 1. Среди кратчайших по времени путей между двумя городами найти путь минимальной стоимости.\n 2. Среди минимальных по стоимоcти путей между двумя городами найти кратчайший по времени путь.\n 3. Найти путь между двумя городами, минимальный по числу посещенных городов.\n 4. Найти множество городов, достижимых из города отправления не более чем за ограниченную сумму денег.\n 5. Найти множество городов, достижимых из города отправления не более чем за lограниченное количество времени.\n")
+
 print("Выберите режим работы программы, введите цифру")
 mode = input()
 if mode=="1":
@@ -200,7 +218,7 @@ if mode=="1":
     if input_transport == ["все"]:
         allowed_transport = transport
     else: allowed_transport = input_transport
- 
+
     result = dijkstra_shortest_time(city_from, city_to, allowed_transport)
     if result is None:
         print("Целевой город недостижим при заданных параметрах")

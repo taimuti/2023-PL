@@ -20,6 +20,9 @@ def add_edge(from_city, to_city, transport_type, cruise_time, cruise_fare):
     # Добавляем ребро от города отправления к городу прибытия
     graph[from_city][to_city] = (transport_type, cruise_time, cruise_fare)
 
+def add_transport(transp):
+    if transp not in transport: transport.append(transp)
+
 # Чтение графа из файла
 def read_graph(filename):
     with open(filename, 'r') as f:
@@ -33,6 +36,9 @@ def read_graph(filename):
             from_city = from_city_not.strip('"')
             to_city = to_city_not.strip('"')
             
+            add_transport(transport_type)
+            add_edge(from_city, to_city, transport_type, int (cruise_time), int(cruise_fare))
+
             if (from_city in city2ind): continue
             else:  
                 city2ind[from_city] = count_id
@@ -42,10 +48,7 @@ def read_graph(filename):
             else:
                 city2ind[to_city] = count_id
                 ind2city[count_id] = to_city
-                count_id += 1
-
-            add_edge(from_city, to_city, transport_type, int (cruise_time), int(cruise_fare))
-            if transport_type not in transport: transport.append(transport_type)
+                count_id += 1 
 
 def dijkstra_shortest_time(from_city, to_city, allowed_transport_types):
     # Создаем словарь для хранения кратчайшего времени проезда от начального города до остальных городов
@@ -147,6 +150,8 @@ def dijkstra_limited_cost(from_city, allowed_transport_types, limit_cost):
     while queue:
         # Извлекаем из очереди город с минимальной стоимостью
         curr_cost, curr_city = heapq.heappop(queue)
+        print(curr_cost)
+        print(distances[curr_city])
         if (curr_cost > distances[curr_city]): 
             continue
         # Если стоимость до текущего города больше, чем ограничение, то выходим из цикла

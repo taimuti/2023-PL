@@ -184,7 +184,6 @@ def dijkstra_limited_time(from_city, allowed_transport_types, limit_time):
         print(f'{to_city} : {from_city} -> {to_city}, {transport_type}, {cruise_time}')
 
 # Читаем граф из файла
-# read_graph("cubes.txt")
 filename = os.getcwd() + '/' + sys.argv[1]
 read_graph(filename)
 
@@ -271,25 +270,3 @@ elif mode=="5":
     else: allowed_transport = input_transport
 
     dijkstra_limited_time(city_from, allowed_transport, time_limit)
-
-# result_3 = bfs("Москва", "Новгород", ["поезд", "автобус", "самолёт"])
-# if result_3 is None:
-#     print("Целевой город недостижим при заданных параметрах")
-# else:
-#     print("Путь:", " -> ".join(result_3))
-
-# result_1 = dijkstra_shortest_time("Севастополь", "Бологое", ["самолёт", "автобус", "поезд"])
-# if result_1 is None:
-#     print("Целевой город недостижим при заданных параметрах")
-# else:
-#     path, time = result_1
-#     print("Путь:", " -> ".join(path))
-#     print("Время: ", time)
-
-# result_2 = dijkstra_lowest_cost("Москва", "Новгород", ["поезд", "автобус", "самолёт"])
-# if result_2 is None:
-#     print("Целевой город недостижим при заданных параметрах")
-# else:
-#     path, cost = result_2
-#     print("Путь:", " -> ".join(path))
-#     print("Стоимость: ", cost)

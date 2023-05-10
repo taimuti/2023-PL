@@ -1,295 +1,414 @@
 import sys
 import os
-import heapq
+import curses
 
-# Словарь для хранения списка ребер графа
-graph = {}
-# Список для хранения видов транспорта
-transport = []
-# Словарь для хранения всех городов и их индексов
-city2ind = {}
-ind2city = {}
+from algorithms import *
+from graph import *
 
-# Функция для добавления ребер в граф
-def add_edge(from_city, to_city, transport_type, cruise_time, cruise_fare):
-    # Проверяем, есть ли уже данный город в словаре graph
-    if from_city not in graph:
-        graph[from_city] = {}
-    if to_city not in graph:
-        graph[to_city] = {}
-    # Добавляем ребро от города отправления к городу прибытия
-    graph[from_city][to_city] = (transport_type, cruise_time, cruise_fare)
+OPTIONS_NUM = 6
 
-def add_transport(transp):
-    if transp not in transport: transport.append(transp)
+MINCOST_MINTIME_MODE = 0
+MINCOST_MODE = 1
+MINSTATIONSNUM_MODE = 2
+LIMITCOST_MODE = 3
+LIMITTIME_MODE = 4
+WANT_TO_EXIT = 5
 
-# Чтение графа из файла
-def read_graph(filename):
-    with open(filename, 'r') as f:
-        count_id = 0
-        for line in f:
-            # Игнорируем комментарии и пустые строки
-            if line.startswith('#') or not line.strip():
-                continue
-            from_city_not, to_city_not, transport_type_not, cruise_time, cruise_fare = line.strip().split()
-            transport_type = transport_type_not.strip('"')
-            from_city = from_city_not.strip('"')
-            to_city = to_city_not.strip('"')
-            
-            add_transport(transport_type)
-            add_edge(from_city, to_city, transport_type, int (cruise_time), int(cruise_fare))
+def main(stdscr):
+    filename = os.getcwd() + '/' + sys.argv[1]
+    read_graph(filename)
+    all_transport = [n for n in transp2ind]
 
-            if (from_city in city2ind): continue
-            else:  
-                city2ind[from_city] = count_id
-                ind2city[count_id] = from_city
-                count_id += 1
-            if (to_city in city2ind): continue
+    want_to_exit = False
+
+    stdscr.scrollok(True)
+    stdscr.keypad(True)
+
+    while not want_to_exit:
+
+        current_item_index = 0
+        choice_made = False
+
+        curses.noecho()
+
+        choices = ["1. Среди кратчайших по времени путей между двумя городами найти путь минимальной стоимости.",
+           "2. Среди минимальных по стоимоcти путей между двумя городами найти кратчайший по времени путь.",
+           "3. Найти путь между двумя городами, минимальный по числу посещенных городов.",
+           "4. Найти множество городов, достижимых из города отправления не более чем за ограниченную сумму денег.",
+           "5. Найти множество городов, достижимых из города отправления не более чем за ограниченное количество времени.",
+           "Выйти из программы"]
+
+        while not choice_made:
+            stdscr.clear()
+            curses.curs_set(0)
+            stdscr.addstr("Выберите режим работы программы:\n\n")
+            stdscr.refresh()
+
+            for i in range(OPTIONS_NUM):
+                if i == current_item_index:
+                    stdscr.attron(curses.A_STANDOUT)
+                    stdscr.addstr(f"{choices[i]}\n")
+                    stdscr.attroff(curses.A_STANDOUT)
+                else:
+                    stdscr.addstr(f"{choices[i]}\n")
+                stdscr.refresh()
+            # Ожидаем ввод пользователя
+            key = stdscr.getch() 
+            # Обрабатываем ввод пользователя
+            if key == curses.KEY_UP:
+                if current_item_index > 0:
+                    current_item_index -= 1
+                else:
+                    current_item_index = OPTIONS_NUM - 1
+            elif key == curses.KEY_DOWN:
+                if current_item_index < OPTIONS_NUM - 1:
+                    current_item_index += 1
+                else:
+                    current_item_index = 0
+            elif key == curses.KEY_ENTER or key == 10 or key == 13: 
+                choice_made = True
+
+        if current_item_index >= 0 and current_item_index <= OPTIONS_NUM - 2: # Запрашиваем разрешенные виды транспорта
+            flag_0 = False
+            was_transport_error = False
+            while flag_0 == False:
+                stdscr.clear()
+                if was_transport_error:
+                    stdscr.addstr(f"Такого транспорта нет, попробуйте еще раз.\n")
+                was_transport_error = False
+                stdscr.addstr("Введите разрешенные виды транспорта через пробел. Если хотите разрешить все виды транспорта, нажмите ENTER:\n\n")
+                stdscr.refresh()
+                curses.curs_set(1)
+                curses.echo()
+
+                # Считываем строку и разбиваем ее на разрешенные виды транспорта
+                allowed_transport_str = str(stdscr.getstr(), "utf-8", errors="ignore")               
+                allowed_transport = allowed_transport_str.split(" ")
+                if allowed_transport == [""]:
+                    allowed_transport = all_transport
+                    flag_0 = True
+                else:
+                    # Проверяем, что каждый вид транспорта существует
+                    for transport_type in allowed_transport:
+                        if transport_type not in all_transport:
+                            was_transport_error = True
+                            break
+                    if not was_transport_error: # Если введено неверно, то повторно запрашиваем ввод транспорта
+                        flag_0 = True
+
+        curses.echo()
+
+        # Выбран 1 режим
+        if current_item_index == MINCOST_MINTIME_MODE:
+            flag_1 = False
+            was_city_from_error = False
+            while flag_1 == False:
+                stdscr.clear()
+                if was_city_from_error:
+                    stdscr.addstr("Такого города нет, попробуйте еще раз.\n")
+                stdscr.addstr("Введите город отправления:\n\n")
+                stdscr.refresh()
+                curses.curs_set(1)
+
+                city_from = str(stdscr.getstr(), "utf-8", errors="ignore")  
+                # Проверяем существет ли город             
+                if city_from not in city2ind: 
+                    was_city_from_error = True
+                else:
+                    flag_1 = True
+                    was_city_from_error = False
+
+            flag_2 = False
+            was_city_to_error = False
+            while flag_2 == False:
+                stdscr.clear()
+                if was_city_to_error:
+                    stdscr.addstr("Такого города нет, попробуйте еще раз.\n")
+                stdscr.addstr("Введите город прибытия:\n\n")
+                stdscr.refresh()
+                curses.curs_set(1)
+
+                city_to = str(stdscr.getstr(), "utf-8", errors="ignore")                
+                # Проверяем существет ли город 
+                if city_to not in city2ind: 
+                    was_city_to_error = True
+                else:
+                    flag_2 = True
+                    was_city_to_error = False
+
+            # АЛГОРИТМ 1
+            result = dijkstra_shortest_time(city2ind[city_from], city2ind[city_to], allowed_transport)
+            # Очищаем экран и выводим результат первого алгоритма
+            stdscr.clear() 
+            if result is None:
+                stdscr.addstr("Целевой город недостижим при заданных параметрах.\n")
             else:
-                city2ind[to_city] = count_id
-                ind2city[count_id] = to_city
-                count_id += 1 
+                stdscr.addstr("Путь минимальной стоимости среди кратчайших по времени путей:\n")
+                stdscr.addstr(f"Время: {result[1]}\n")
+                path = result[0]
+                cruise = []
+                curver = city2ind[city_to]
+                while (curver != city2ind[city_from]):
+                    cruise.insert(0, (path[curver]))
+                    curver = path[curver][0]
+                for (from_city, to_city, transport_type, cruise_time, cruise_fare) in cruise:
+                    stdscr.addstr(f'{ind2city[from_city]} -- {ind2transp[transport_type]} {cruise_time} {cruise_fare} --> ')
+                if to_city is not None:
+                    stdscr.addstr(f'{ind2city[to_city]} \n')
 
-def dijkstra_shortest_time(from_city, to_city, allowed_transport_types):
-    # Создаем словарь для хранения кратчайшего времени проезда от начального города до остальных городов
-    shortest_time = {from_city: 0}
-    # Создаем словарь для хранения пути от начального города до остальных городов
-    path = {from_city: [from_city]}
-    # Создаем список, в который будем добавлять необработанные города
-    unprocessed_cities = [(0, from_city)]
-    # Пока есть необработанные города
-    while unprocessed_cities:
-        # Получаем город с минимальным временем проезда
-        (current_time, current_city) = heapq.heappop(unprocessed_cities)
-        # Если достигли целевого города, возвращаем путь и время проезда
-        if current_city == to_city:
-            return (path[current_city], shortest_time[current_city])
-        # Для каждого соседнего города
-        for neighbor_city, (transport_type, cruise_time, cruise_fare) in graph[current_city].items():
-            # Если данный тип транспорта не допустим, пропускаем этот город
-            if transport_type not in allowed_transport_types:
-                continue
-            # Вычисляем время проезда до соседнего города через текущий город
-            new_time = current_time + cruise_time
-            # Если это время проезда до соседнего города меньше, чем ранее известное
-            if neighbor_city not in shortest_time or new_time < shortest_time[neighbor_city]:
-                # Обновляем кратчайшее время проезда и путь до соседнего города
-                shortest_time[neighbor_city] = new_time
-                path[neighbor_city] = path[current_city] + [neighbor_city]
-                # Добавляем соседний город в список необработанных городов
-                heapq.heappush(unprocessed_cities, (new_time, neighbor_city))
-    # Если целевой город недостижим из начального, возвращаем None
-    return None
-
-def dijkstra_lowest_cost(from_city, to_city, allowed_transport_types):
-    # Создаем словарь для хранения минимальной стоимости проезда от начального города до остальных городов
-    lowest_cost = {from_city: 0}
-    # Создаем словарь для хранения пути от начального города до остальных городов
-    path = {from_city: [from_city]}
-    # Создаем список, в который будем добавлять необработанные города
-    unprocessed_cities = [(0, from_city)]
-    # Пока есть необработанные города
-    while unprocessed_cities:
-        # Получаем город с минимальной стоимостью проезда
-        (current_cost, current_city) = heapq.heappop(unprocessed_cities)
-        # Если достигли целевого города, возвращаем путь и стоимость проезда
-        if current_city == to_city:
-            return (path[current_city], lowest_cost[current_city])
-        # Для каждого соседнего города
-        for neighbor_city, (transport_type, cruise_time, cruise_fare) in graph[current_city].items():
-            # Если данный тип транспорта не допустим, пропускаем этот город
-            if transport_type not in allowed_transport_types:
-                continue
-            # Вычисляем стоимость проезда до соседнего города через текущий город
-            new_cost = current_cost + cruise_fare
-            # Если это время проезда до соседнего города меньше, чем ранее известное
-            if neighbor_city not in lowest_cost or new_cost < lowest_cost[neighbor_city]:
-                # Обновляем минимальную стоимость проезда и путь до соседнего города
-                lowest_cost[neighbor_city] = new_cost
-                path[neighbor_city] = path[current_city] + [neighbor_city]
-                # Добавляем соседний город в список необработанных городов
-                heapq.heappush(unprocessed_cities, (new_cost, neighbor_city))
-    # Если целевой город недостижим из начального, возвращаем None
-    return None
-
-def bfs(from_city, to_city, allowed_transport_types):
-    # Словарь для хранения посещенных городов
-    visited = {from_city: None}
-    # Список очередности обработки городов
-    queue = [from_city]
-    while queue:
-        # Извлекаем следующий город из очереди
-        current_city = queue.pop(0)
-        # Если достигли целевого города, возвращаем путь к нему
-        if current_city == to_city:
-            path = []
-            while current_city is not None:
-                path.append(current_city)
-                current_city = visited[current_city]
-            return path[::-1]
-        # Просматриваем соседей текущего города
-        for neighbor_city, transport in graph[current_city].items(): 
-            transport_type, cruise_time, cruise_fare = transport
-            # Проверяем, что разрешенный вид транспорта встречается в текущем ребре
-            if transport_type in allowed_transport_types and neighbor_city not in visited:
-                visited[neighbor_city] = current_city
-                queue.append(neighbor_city)
-    # Если целевой город не найден, возвращаем None
-    return None
-
-def dijkstra_limited_cost(from_city, allowed_transport_types, limit_cost):
-    from_city = city2ind[from_city]
-    # Словарь для хранения кратчайших расстояний до каждого города
-    distances = {city: float('inf') for city in ind2city}
-    distances[from_city] = 0
-    # Запоминание путей
-    path ={}
-    # Очередь с приоритетами для хранения пар (расстояние до города, город)
-    queue = [(0, from_city)]
-    # Цикл, пока очередь с приоритетами не пуста
-    while queue:
-        # Извлекаем из очереди город с минимальной стоимостью
-        curr_cost, curr_city = heapq.heappop(queue)
-        print(curr_cost)
-        print(distances[curr_city])
-        if (curr_cost > distances[curr_city]): 
-            continue
-        # Если стоимость до текущего города больше, чем ограничение, то выходим из цикла
-        if curr_cost > limit_cost: 
-            break
-        # Обходим всех соседей текущего города
-        for neighbour, (transport_type, cruise_time, cruise_fare) in graph[ind2city[curr_city]].items():
-            neighbor = city2ind[neighbour]
-            # Если тип транспорта не входит в список разрешенных, то пропускаем город
-            if transport_type not in allowed_transport_types: continue
-            # Вычисляем новую стоимость до соседа через текущий город
-            new_cost = distances[curr_city] + cruise_fare
-            if ((distances[neighbor] > new_cost) and (new_cost <= limit_cost)):
-                distances[neighbor] = new_cost
-                path[neighbor] = [curr_city, neighbor, transport_type, cruise_fare]
-                heapq.heappush(queue,[distances[neighbor], neighbor])
-    # Выводим кратчайшие пути до всех городов, до которых можно добраться за ограниченную стоимость
-    for (to_city, [from_city, to_city, transport_type, cruise_fare]) in path.items():
-        print(f'{ind2city[to_city]} : {ind2city[from_city]} -> {ind2city[to_city]}, {transport_type}, {cruise_fare}')
-
-def dijkstra_limited_time(from_city, allowed_transport_types, limit_time):
-    from_city = city2ind[from_city]
-    # Словарь для хранения минимального времени до каждого города
-    distances = {city: float('inf') for city in ind2city}
-    distances[from_city] = 0
-    # Запоминание путей
-    path ={}
-    # Очередь с приоритетами для хранения пар (время до города, город)
-    queue = [(0, from_city)]
-    # Цикл, пока очередь с приоритетами не пуста
-    while queue:
-        # Извлекаем из очереди город с минимальной стоимостью
-        curr_time, curr_city = heapq.heappop(queue)
-        if (curr_time > distances[curr_city]): 
-            continue
-        # Если стоимость до текущего города больше, чем ограничение, то выходим из цикла
-        if curr_time > limit_time: 
-            break
-        # Обходим всех соседей текущего города
-        for neighbour, (transport_type, cruise_time, cruise_fare) in graph[ind2city[curr_city]].items():
-            neighbor = city2ind[neighbour]
-            # Если тип транспорта не входит в список разрешенных, то пропускаем город
-            if transport_type not in allowed_transport_types: continue
-            # Вычисляем новую стоимость до соседа через текущий город
-            new_time = distances[curr_city] + cruise_time
-            if ((distances[neighbor] > new_time) and (new_time <= limit_time)):
-                distances[neighbor] = new_time
-                path[neighbor] = [curr_city, neighbor, transport_type, cruise_time]
-                heapq.heappush(queue,(distances[neighbor], neighbor))
-    # Выводим кратчайшие пути до всех городов, до которых можно добраться за ограниченную стоимость
-    for (to_city, [from_city, to_city, transport_type, cruise_time]) in path.items():
-        print(f'{ind2city[to_city]} : {ind2city[from_city]} -> {ind2city[to_city]}, {transport_type}, {cruise_time}')
-
-# Читаем граф из файла
-filename = os.getcwd() + '/' + sys.argv[1]
-read_graph(filename)
-
-print("Режимы работы программы:\n 1. Среди кратчайших по времени путей между двумя городами найти путь минимальной стоимости.\n 2. Среди минимальных по стоимоcти путей между двумя городами найти кратчайший по времени путь.\n 3. Найти путь между двумя городами, минимальный по числу посещенных городов.\n 4. Найти множество городов, достижимых из города отправления не более чем за ограниченную сумму денег.\n 5. Найти множество городов, достижимых из города отправления не более чем за lограниченное количество времени.\n")
-
-print("Выберите режим работы программы, введите цифру")
-mode = input()
-if mode=="1":
-    print("Введите город отправления: ")
-    city_from = input()
-    print("Введите город прибытия: ")
-    city_to = input()
-    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите 'все':")
-    input_transport = input().split()
-    if input_transport == ["все"]:
-        allowed_transport = transport
-    else: allowed_transport = input_transport
-
-    result = dijkstra_shortest_time(city_from, city_to, allowed_transport)
-    if result is None:
-        print("Целевой город недостижим при заданных параметрах")
-    else:
-        path, time = result
-        print("Путь:", " -> ".join(path))
-        print("Время: ", time)
+            stdscr.addstr("Нажмите любую клавишу для возвращения в главное меню\n")
+            stdscr.refresh()
+            curses.curs_set(0)
+            stdscr.getch()
         
-elif mode=="2": 
-    print("Введите город отправления: ")
-    city_from = input()
-    print("Введите город прибытия: ")
-    city_to = input()
-    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите 'все':")
-    input_transport = input().split()
-    if input_transport == ["все"]:
-        allowed_transport = transport
-    else: allowed_transport = input_transport
+        # Выбран 2 режим
+        elif current_item_index == MINCOST_MODE:
+            flag_1 = False
+            was_city_from_error = False
+            while flag_1 == False:
+                stdscr.clear()
+                if was_city_from_error:
+                    stdscr.addstr("Такого города нет, попробуйте еще раз.\n")
+                stdscr.addstr("Введите город отправления:\n\n")
+                stdscr.refresh()
+                curses.curs_set(1)
 
-    result = dijkstra_lowest_cost(city_from, city_to, allowed_transport)
-    if result is None:
-        print("Целевой город недостижим при заданных параметрах")
-    else:
-        path, cost = result
-        print("Путь:", " -> ".join(path))
-        print("Стоимость: ", cost)
+                city_from = str(stdscr.getstr(), "utf-8", errors="ignore")               
+                if city_from not in city2ind:
+                    was_city_from_error = True
+                else:
+                    flag_1 = True
+                    was_city_from_error = False
 
-elif mode=="3":
-    print("Введите город отправления: ")
-    city_from = input()
-    print("Введите город прибытия: ")
-    city_to = input()
-    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите 'все':")
-    input_transport = input().split()
-    if input_transport == ["все"]:
-        allowed_transport = transport
-    else: allowed_transport = input_transport
+            flag_2 = False
+            was_city_to_error = False
+            while flag_2 == False:
+                stdscr.clear()
+                if was_city_to_error:
+                    stdscr.addstr("Такого города нет, попробуйте еще раз.\n")
+                stdscr.addstr("Введите город прибытия:\n\n")
+                stdscr.refresh()
+                curses.curs_set(1)
 
-    result = bfs(city_from, city_to, allowed_transport)
-    if result is None:
-        print("Целевой город недостижим при заданных параметрах")
-    else:
-        print("Путь:", " -> ".join(result))
+                city_to = str(stdscr.getstr(), "utf-8", errors="ignore")                  
+                if city_to not in city2ind:
+                    was_city_to_error = True
+                else:
+                    flag_2 = True
+                    was_city_to_error = False
 
-elif mode=="4":
-    print("Введите город отправления: ")
-    city_from = input()
-    print("Введите ограничение по стоимости: ")
-    cost_limit = input()
-    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите 'все':")
-    input_transport = input().split()
-    if input_transport == ["все"]:
-        allowed_transport = transport
-    else: allowed_transport = input_transport
+            # АЛГОРИТМ 2
+            result = dijkstra_lowest_cost(city2ind[city_from], city2ind[city_to], allowed_transport)
+            
+            stdscr.clear()
+            if result is None:
+                stdscr.addstr("Целевой город недостижим при заданных параметрах.\n")
+            else:
+                stdscr.addstr("Кратчайший по времени путь среди путей минимальной стоимости:\n")
+                stdscr.addstr(f"Стоимость: {result[1]}\n")
+                path = result[0]
+                cruise = []
+                curver = city2ind[city_to]
+                while (curver != city2ind[city_from]):
+                    cruise.insert(0, (path[curver]))
+                    curver = path[curver][0]
+                for (from_city, to_city, transport_type, cruise_time, cruise_fare) in cruise:
+                    stdscr.addstr(f'{ind2city[from_city]} -- {ind2transp[transport_type]} {cruise_time} {cruise_fare} --> ')
+                if to_city is not None:
+                    stdscr.addstr(f'{ind2city[to_city]} \n')
+            
+            stdscr.addstr("Нажмите любую клавишу для перехода в меню\n")
+            stdscr.refresh()
+            curses.curs_set(0)
+            stdscr.getch()
+        
+        # Выбран 3 режим
+        elif current_item_index == MINSTATIONSNUM_MODE:
+            flag_1 = False
+            was_city_from_error = False
+            while flag_1 == False:
+                stdscr.clear()
+                if was_city_from_error:
+                    stdscr.addstr("Такого города нет, попробуйте еще раз.\n")
+                stdscr.addstr("Введите город отправления:\n\n")
+                stdscr.refresh()
+                curses.curs_set(1)
 
-    dijkstra_limited_cost(city_from, allowed_transport, cost_limit)
+                city_from = str(stdscr.getstr(), "utf-8", errors="ignore")              
+                if city_from not in city2ind:
+                    was_city_from_error = True
+                else:
+                    flag_1 = True
+                    was_city_from_error = False
 
-elif mode=="5":
-    print("Введите город отправления: ")
-    city_from = input()
-    print("Введите ограничение по времени: ")
-    time_limit = input()
-    print("Введите разрешенные виды транспорта через пробел, если хотите разрешить все виды, введите 'все':")
-    input_transport = input().split()
-    if input_transport == ["все"]:
-        allowed_transport = transport
-    else: allowed_transport = input_transport
+            flag_2 = False
+            was_city_to_error = False
+            while flag_2 == False:
+                stdscr.clear()
+                if was_city_to_error:
+                    stdscr.addstr("Такого города нет, попробуйте еще раз.\n")
+                stdscr.addstr("Введите город прибытия:\n\n")
+                stdscr.refresh()
+                curses.curs_set(1)
 
-    dijkstra_limited_time(city_from, allowed_transport, time_limit)
+                city_to = str(stdscr.getstr(), "utf-8", errors="ignore")               
+                if city_to not in city2ind:
+                    was_city_to_error = True
+                else:
+                    flag_2 = True
+                    was_city_to_error = False
+
+            # АЛГОРИТМ 3
+            result = bfs(city2ind[city_from], city2ind[city_to], allowed_transport)
+            stdscr.clear()
+            stdscr.addstr(f"Путь между двумя городами, минимальный по числу посещенных городов:\n")
+            
+            cruise = []
+            curver = city2ind[city_to]
+            while (curver != city2ind[city_from]):
+                if ((result is None) or (curver not in result)): 
+                    stdscr.addstr('Целевой город недостижим при заданных параметрах.\n')
+                    break
+                cruise.insert(0, (result[curver]))
+                curver = result[curver][0]
+            for (from_city, to_city, transport_type, cruise_time, cruise_fare) in cruise:
+                stdscr.addstr(f'{ind2city[from_city]} -- {ind2transp[transport_type]} {cruise_time} {cruise_fare} --> ')
+            if to_city is not None:
+                stdscr.addstr(f'{ind2city[to_city]} \n')
+
+            stdscr.addstr("Нажмите любую клавишу для перехода в меню\n")
+            stdscr.refresh()
+            curses.curs_set(0)
+            stdscr.getch()
+
+        # Выбран 4 режим
+        elif current_item_index == LIMITCOST_MODE:
+            flag_1 = False
+            was_city_from_error = False
+            while flag_1 == False:
+                stdscr.clear()
+                if was_city_from_error:
+                    stdscr.addstr("Такого города нет, попробуйте еще раз.\n")
+                stdscr.addstr("Введите город отправления:\n\n")
+                stdscr.refresh()
+                curses.curs_set(1)
+
+                city_from = str(stdscr.getstr(), "utf-8", errors="ignore")                
+                if city_from not in city2ind:
+                    was_city_from_error = True
+                else:
+                    flag_1 = True
+                    was_city_from_error = False
+                             
+            stdscr.clear()
+            stdscr.addstr("Введите ограничение по стоимости:\n") 
+            stdscr.refresh()
+            curses.curs_set(1)
+            # Ввод ограничения по стоимости и обработка возможных ошибок
+            while True: 
+                try:
+                    limit_cost = int(str(stdscr.getstr(), "utf-8", errors="ignore"))
+                    if limit_cost < 0: 
+                        raise ValueError()
+                    break
+                except ValueError:
+                    stdscr.clear()
+                    stdscr.addstr("Некорректный ввод. Ожидется целое неотрицательным числом. Попробуйте еще раз:\n")
+                    stdscr.refresh()
+                    continue
+            
+            # АЛГОРИТМ 4            
+            result = dijkstra_limited_cost(city2ind[city_from], allowed_transport, limit_cost)                     
+
+            stdscr.clear()
+            if not result:
+                stdscr.addstr(f"Нет городов, достижимых из {city_from} за {limit_cost} рублей, c использованием указанных доступных видов транспорта\n")
+            else:
+                stdscr.addstr(f"Города, достижимые из {city_from} за {limit_cost} рублей:\n")
+                cruise = []
+                for city in result: 
+                    stdscr.addstr(f"Город : {ind2city[city]}\n")
+                    cruise = []
+                    while (city != city2ind[city_from]):
+                        cruise.insert(0, (result[city]))
+                        city = result[city][0]
+                    for (from_city, to_city, transport_type, cruise_time, cruise_fare) in cruise:
+                        stdscr.addstr(f'{ind2city[from_city]} -- {ind2transp[transport_type]} {cruise_time} {cruise_fare} --> ')
+                    if to_city is not None:
+                        stdscr.addstr(f'{ind2city[to_city]} \n')
+            stdscr.addstr("Нажмите любую клавишу для перехода в меню\n")
+            stdscr.refresh()
+            curses.curs_set(0)
+            stdscr.getch()
+
+        # Выбран 5 режим                
+        elif current_item_index == LIMITTIME_MODE:
+            flag_1 = False
+            was_city_from_error = False
+            while flag_1 == False:
+                stdscr.clear()
+                if was_city_from_error:
+                    stdscr.addstr("Такого города нет, попробуйте еще раз.\n")
+                stdscr.addstr("Введите город отправления:\n\n")
+                stdscr.refresh()
+                curses.curs_set(1)
+
+                city_from = str(stdscr.getstr(), "utf-8", errors="ignore")                 
+                if city_from not in city2ind:
+                    was_city_from_error = True
+                else:
+                    flag_1 = True
+                    was_city_from_error = False
+	
+            stdscr.clear()
+            stdscr.addstr("Введите ограничение по времени:\n")
+            stdscr.refresh()
+            curses.curs_set(1)
+            # Ввод ограничения по времени и обработка возможных ошибок
+            while True: 
+                try:
+                    limit_time = int(str(stdscr.getstr(), "utf-8", errors="ignore"))
+                    if limit_time < 0: 
+                        raise ValueError()
+                    break
+                except ValueError:
+                    stdscr.clear()
+                    stdscr.addstr("Некорректный ввод. Ожидется целое неотрицательным числом. Попробуйте еще раз:\n")
+                    stdscr.refresh()
+                    continue
+            
+            # АЛГОРИТМ 5
+            result = dijkstra_limited_time(city2ind[city_from], allowed_transport, limit_time)
+
+            stdscr.clear()
+            if not result:
+                stdscr.addstr(f"Нет городов, достижимых из {city_from} за время {limit_cost}, c использованием указанных доступных видов транспорта\n")
+            else:
+                stdscr.addstr(f"Города, достижимые из {city_from} за время {limit_time} :\n")
+                for city in result:
+                    stdscr.addstr(f"{city}: {result[city][0]} (время: {result[city][1]})\n")
+                cruise = []
+                for city in result: 
+                    stdscr.addstr(f"Город : {ind2city[city]}  \n")
+                    cruise = []
+                    while (city != city2ind[city_from]):
+                        cruise.insert(0, (result[city]))
+                        city = result[city][0]
+                    for (from_city, to_city, transport_type, cruise_time, cruise_fare) in cruise:
+                        stdscr.addstr(f'{ind2city[from_city]} -- {ind2transp[transport_type]} {cruise_time} {cruise_fare} --> ')
+                    if to_city is not None:
+                        stdscr.addstr(f'{ind2city[to_city]} \n')
+            stdscr.addstr("Нажмите любую клавишу для перехода в меню\n")
+            stdscr.refresh()
+            curses.curs_set(0)
+            stdscr.getch()
+        
+        # Выход из программы
+        elif current_item_index == WANT_TO_EXIT:
+            want_to_exit = True                
+
+        curses.endwin()
+
+
+if __name__ == "__main__":
+    curses.wrapper(main)
